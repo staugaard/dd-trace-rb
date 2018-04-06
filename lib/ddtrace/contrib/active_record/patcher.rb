@@ -20,6 +20,9 @@ module Datadog
             get_option(:tracer).set_service_info(v, 'active_record', Ext::AppTypes::DB)
           end
         end
+        option :databases, default: {} do |value|
+          value.tap { Utils.add_tracer_config(value) }
+        end
         option :orm_service_name
         option :tracer, default: Datadog.tracer do |value|
           (value || Datadog.tracer).tap do |v|
@@ -82,7 +85,7 @@ module Datadog
         def sql(span, event, _id, payload)
           connection_config = Utils.connection_config(payload[:connection_id])
           span.name = "#{connection_config[:adapter_name]}.query"
-          span.service = get_option(:service_name)
+          span.service = connection_config[:tracer_config][:service_name] || get_option(:service_name)
           span.resource = payload.fetch(:sql)
           span.span_type = Datadog::Ext::SQL::TYPE
 

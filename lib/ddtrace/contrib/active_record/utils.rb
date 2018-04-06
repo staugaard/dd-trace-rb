@@ -1,3 +1,5 @@
+require 'ddtrace/contrib/active_record/tracer_configuration_handler'
+
 module Datadog
   module Contrib
     module ActiveRecord
@@ -39,7 +41,8 @@ module Datadog
             adapter_name: normalize_vendor(config[:adapter]),
             adapter_host: config[:host],
             adapter_port: config[:port],
-            database_name: config[:database]
+            database_name: config[:database],
+            tracer_config: tracer_config(config)
           }
         end
 
@@ -76,6 +79,23 @@ module Datadog
           connection_pool.nil? ? {} : (@default_connection_config = connection_pool.spec.config)
         rescue StandardError
           {}
+        end
+
+        # TODO: Extract this to Patcher
+        def self.tracer_config(spec)
+          __tracer_config_handler.get(spec)
+        end
+
+        def self.add_tracer_config(config)
+          __tracer_config_handler.tap do |handler|
+            config.each do |spec, tracer_config|
+              handler.set(spec, tracer_config)
+            end
+          end
+        end
+
+        def self.__tracer_config_handler
+          @__tracer_config_handler ||= ::Datadog::Contrib::ActiveRecord::TracerConfigurationHandler.new
         end
       end
     end
